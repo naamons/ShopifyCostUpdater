@@ -33,7 +33,6 @@ def update_product_cost(inventory_item_id, cost):
     response = requests.put(url, json=payload, headers={"X-Shopify-Access-Token": st.secrets.access_token})
     return response.status_code == 200
 
-
 def main():
     st.title("Shopify Product Cost Updater")
 
