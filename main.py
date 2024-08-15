@@ -38,24 +38,13 @@ def fetch_inventory_item_id(shop_name, access_token, sku):
         time.sleep(0.5)  # Respect rate limits
     return None
 
-# Function to update the unit cost for a given inventory item ID
-def update_unit_cost(shop_name, access_token, inventory_item_id, cost):
-    url = f"https://{shop_name}.myshopify.com/admin/api/2024-01/inventory_items/{inventory_item_id}.json"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": access_token
-    }
-    data = {
-        "inventory_item": {
-            "id": inventory_item_id,
-            "cost": cost
-        }
-    }
-    response = requests.put(url, json=data, headers=headers)
-    return response.status_code, response.json()
+# Function to simulate updating the unit cost for a given inventory item ID
+def simulate_update_unit_cost(inventory_item_id, cost):
+    # Simulate the update by logging the action instead of making an actual API request
+    st.write(f"Would update inventory item ID {inventory_item_id} with cost {cost}.")
 
 # Streamlit app layout
-st.title("Shopify Unit Cost Updater")
+st.title("Shopify Unit Cost Updater (Dry Run)")
 
 # Accessing Shopify credentials from Streamlit secrets
 shop_name = st.secrets["shop_name"]
@@ -76,9 +65,9 @@ if uploaded_file:
         st.write("Preview of CSV data:")
         st.write(df.head())
 
-        # Update costs
-        st.write("Updating costs in Shopify...")
-        updated_count = 0
+        # Simulate the update process
+        st.write("Simulating cost updates in Shopify...")
+        simulated_count = 0
         for index, row in df.iterrows():
             sku = row['Part No.']
             cost = row['Cost']
@@ -86,15 +75,12 @@ if uploaded_file:
             # Fetch the inventory item ID
             inventory_item_id = fetch_inventory_item_id(shop_name, access_token, sku)
             if inventory_item_id:
-                status_code, result = update_unit_cost(shop_name, access_token, inventory_item_id, cost)
-                if status_code == 200:
-                    updated_count += 1
-                else:
-                    st.error(f"Failed to update SKU {sku}: {result}")
+                simulate_update_unit_cost(inventory_item_id, cost)
+                simulated_count += 1
             else:
                 st.error(f"Could not find inventory item for SKU {sku}")
 
-        st.success(f"Updated cost for {updated_count} SKUs.")
+        st.success(f"Simulated cost updates for {simulated_count} SKUs.")
 
 else:
     st.info("Please upload a CSV file.")
