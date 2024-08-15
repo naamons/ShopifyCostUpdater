@@ -19,17 +19,20 @@ def get_all_products():
     return products
 
 def update_product_cost(inventory_item_id, cost):
+    # Check if the cost is NaN
+    if pd.isna(cost):
+        st.warning(f"Skipped updating inventory item {inventory_item_id} due to NaN cost.")
+        return False
+    
     url = f"{INVENTORY_ITEM_URL}/{inventory_item_id}.json"
     payload = {
         "inventory_item": {
             "cost": cost
         }
     }
-    st.write("Payload being sent:", payload)  # Add this line for debugging
     response = requests.put(url, json=payload, headers={"X-Shopify-Access-Token": st.secrets.access_token})
-    st.write("Response status code:", response.status_code)
-    st.write("Response content:", response.content)  # Add this line to see the full response
     return response.status_code == 200
+
 
 def main():
     st.title("Shopify Product Cost Updater")
