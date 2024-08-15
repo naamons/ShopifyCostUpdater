@@ -25,7 +25,10 @@ def update_product_cost(inventory_item_id, cost):
             "cost": cost
         }
     }
+    st.write("Payload being sent:", payload)  # Add this line for debugging
     response = requests.put(url, json=payload, headers={"X-Shopify-Access-Token": st.secrets.access_token})
+    st.write("Response status code:", response.status_code)
+    st.write("Response content:", response.content)  # Add this line to see the full response
     return response.status_code == 200
 
 def main():
