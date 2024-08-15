@@ -28,7 +28,8 @@ def search_inventory_item_by_sku(shop_name, access_token, sku):
         # Search through products and their variants
         for product in products:
             for variant in product['variants']:
-                if variant['sku'].strip() == sku.strip():
+                # Check if the SKU field exists and is not None
+                if variant.get('sku') and variant['sku'].strip() == sku.strip():
                     found_item = {
                         'product_id': product['id'],
                         'variant_id': variant['id'],
