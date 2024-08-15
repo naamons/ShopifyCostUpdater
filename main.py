@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import time
 
 # Shopify API endpoints
 BASE_URL = f"https://{st.secrets.shop_name}.myshopify.com/admin/api/2023-04"
@@ -39,19 +40,43 @@ def main():
         if st.button("Update Costs"):
             products = get_all_products()
             
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            results_area = st.empty()
+            
             updated_count = 0
-            for _, row in df.iterrows():
+            total_count = len(df)
+            results = []
+
+            for index, row in df.iterrows():
                 sku = row['Part No.']
                 cost = row['Cost']
                 
+                status_text.text(f"Processing SKU: {sku}")
+                
+                found = False
                 for product in products:
                     for variant in product['variants']:
                         if variant['sku'] == sku:
                             if update_product_cost(variant['inventory_item_id'], cost):
                                 updated_count += 1
+                                results.append(f"✅ Updated: SKU {sku}, New Cost: {cost}")
+                            else:
+                                results.append(f"❌ Failed to update: SKU {sku}")
+                            found = True
                             break
+                    if found:
+                        break
+                
+                if not found:
+                    results.append(f"⚠️ Not found: SKU {sku}")
+                
+                progress_bar.progress((index + 1) / total_count)
+                results_area.text("\n".join(results))
+                time.sleep(0.1)  # Small delay to make updates visible
             
-            st.success(f"Updated costs for {updated_count} products.")
+            status_text.text("Update Completed")
+            st.success(f"Updated costs for {updated_count} out of {total_count} products.")
 
 if __name__ == "__main__":
     main()
