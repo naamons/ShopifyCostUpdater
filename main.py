@@ -3,40 +3,54 @@ import pandas as pd
 import requests
 import time
 
-# Function to fetch products with pagination
-def fetch_products(shop_name, access_token, page_info=None):
+# Function to search for an inventory item by SKU
+def search_inventory_item_by_sku(shop_name, access_token, sku):
+    # Initial API call to fetch products with variants
     url = f"https://{shop_name}.myshopify.com/admin/api/2024-01/products.json?limit=250"
-    if page_info:
-        url += f"&page_info={page_info}"
-    
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
     }
-    response = requests.get(url, headers=headers)
-    products = response.json().get('products', [])
-    next_page_info = response.headers.get('Link', None)
-    
-    if next_page_info and 'rel="next"' in next_page_info:
-        next_page_info = next_page_info.split(';')[0].split('page_info=')[1].strip('<>')
-    else:
-        next_page_info = None
-
-    return products, next_page_info
-
-# Function to fetch the inventory item ID for a given variant SKU
-def fetch_inventory_item_id(shop_name, access_token, sku):
     page_info = None
+    found_item = None
+
     while True:
-        products, page_info = fetch_products(shop_name, access_token, page_info)
+        if page_info:
+            url += f"&page_info={page_info}"
+        
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            st.error(f"Failed to fetch products: {response.status_code} - {response.text}")
+            return None
+        
+        products = response.json().get('products', [])
+        
+        # Search through products and their variants
         for product in products:
             for variant in product['variants']:
-                if variant['sku'] == sku:
-                    return variant['inventory_item_id']
-        if not page_info:
+                if variant['sku'].strip() == sku.strip():
+                    found_item = {
+                        'product_id': product['id'],
+                        'variant_id': variant['id'],
+                        'inventory_item_id': variant['inventory_item_id']
+                    }
+                    break
+            if found_item:
+                break
+        
+        if found_item or not response.headers.get('Link'):
             break
-        time.sleep(0.5)  # Respect rate limits
-    return None
+
+        # Handle pagination
+        link_header = response.headers.get('Link')
+        if link_header and 'rel="next"' in link_header:
+            page_info = link_header.split('page_info=')[1].split('>')[0]
+        else:
+            break
+        
+        time.sleep(0.5)  # Respect API rate limits
+    
+    return found_item
 
 # Function to simulate updating the unit cost for a given inventory item ID
 def simulate_update_unit_cost(inventory_item_id, cost):
@@ -72,10 +86,10 @@ if uploaded_file:
             sku = row['Part No.']
             cost = row['Cost']
 
-            # Fetch the inventory item ID
-            inventory_item_id = fetch_inventory_item_id(shop_name, access_token, sku)
-            if inventory_item_id:
-                simulate_update_unit_cost(inventory_item_id, cost)
+            # Search for the inventory item by SKU
+            inventory_item = search_inventory_item_by_sku(shop_name, access_token, sku)
+            if inventory_item:
+                simulate_update_unit_cost(inventory_item['inventory_item_id'], cost)
                 simulated_count += 1
             else:
                 st.error(f"Could not find inventory item for SKU {sku}")
