@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import requests
 
-# Function to fetch the inventory item ID and current cost by SKU
-def fetch_inventory_item_by_sku(shop_name, access_token, sku):
-    url = f"https://{shop_name}.myshopify.com/admin/api/2024-04/inventory_items.json?query=sku:{sku}"
+# Function to fetch the inventory item ID by SKU
+def fetch_inventory_item_id_by_sku(shop_name, access_token, sku):
+    url = f"https://{shop_name}.myshopify.com/admin/api/2024-04/products.json?limit=250&fields=id,title,variants"
     headers = {
         "Content-Type": "application/json",
         "X-Shopify-Access-Token": access_token
@@ -12,11 +12,13 @@ def fetch_inventory_item_by_sku(shop_name, access_token, sku):
     response = requests.get(url, headers=headers)
     
     if response.status_code == 200:
-        inventory_items = response.json().get('inventory_items', [])
-        if inventory_items:
-            return inventory_items[0]  # Assuming SKU is unique, take the first match
+        products = response.json().get('products', [])
+        for product in products:
+            for variant in product['variants']:
+                if variant.get('sku') == sku:
+                    return variant['inventory_item_id']
     else:
-        st.error(f"Failed to fetch inventory item for SKU {sku}: {response.status_code} - {response.text}")
+        st.error(f"Failed to fetch products: {response.status_code} - {response.text}")
     
     return None
 
@@ -67,10 +69,9 @@ if uploaded_file:
             sku = row['Part No.']
             cost = row['Cost']
 
-            # Fetch the inventory item by SKU
-            inventory_item = fetch_inventory_item_by_sku(shop_name, access_token, sku)
-            if inventory_item:
-                inventory_item_id = inventory_item['id']
+            # Fetch the inventory item ID by SKU
+            inventory_item_id = fetch_inventory_item_id_by_sku(shop_name, access_token, sku)
+            if inventory_item_id:
                 # Update the cost
                 update_inventory_item_cost(shop_name, access_token, inventory_item_id, cost)
             else:
